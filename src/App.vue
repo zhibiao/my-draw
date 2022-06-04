@@ -1,26 +1,62 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <button @click="brushType = 'pencil'">Pencil</button>
+  <button @click="brushType = 'eraser'">Eraser</button>
+  <hr />
+
+  <div class="grid">
+    <div class="box"><Draw :brushType="brushType" /></div>
+    <div class="box"><Draw :brushType="brushType" /></div>
+    <div class="box"><Draw :brushType="brushType" /></div>
+    <div class="box"><Draw :brushType="brushType" /></div>
+  </div>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
+<script setup>
+import { ref } from "vue";
+import Draw from "./components/Draw.vue";
 
-export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
-}
+const brushType = ref("pencil");
 </script>
 
 <style>
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+  width: 100%;
+  height: 100%;
+}
+
+.grid {
+  width: 100%;
+  height: 90%;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.box {
+  width: 50%;
+  height: 50%;
+}
+
+.box:nth-of-type(1) {
+  background-color: aqua;
+}
+
+.box:nth-of-type(2) {
+  background-color: rgb(4, 0, 255);
+}
+
+.box:nth-of-type(3) {
+  background-color: rgb(0, 255, 145);
+}
+
+.box:nth-of-type(4) {
+  background-color: rgb(238, 255, 0);
 }
 </style>
