@@ -11,8 +11,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
+import { io } from "socket.io-client";
 
 const props = defineProps({
+  serverURL: {
+    type: String,
+    default: "",
+  },
+
   brushType: {
     type: String,
     default: "pencil",
@@ -33,8 +39,6 @@ const props = defineProps({
     default: 50,
   },
 });
-
-const emit = defineEmits(["path:add", "path:clear", "canvas:clear"]);
 
 const drawRef = ref(null),
   canvasRef = ref(null);
@@ -81,6 +85,8 @@ function pencilMove(event) {
 
   drawLine(lineRecord);
 
+  ioClient.emit("draw:line", lineRecord);
+
   beginPoint = endPoint;
 }
 
@@ -126,13 +132,18 @@ const buildEraserStyle = computed(() => {
   };
 });
 
-function clearCircle(center, radius) {
+function eraseCircle(center, radius) {
   canvasCtx.save();
   canvasCtx.globalCompositeOperation = "destination-out";
   canvasCtx.beginPath();
   canvasCtx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
   canvasCtx.fill();
   canvasCtx.restore();
+}
+
+function clearAll() {
+  const canvas = canvasRef.value;
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function eraserDown(event) {
@@ -144,7 +155,12 @@ function eraserDown(event) {
 function eraserMove(event) {
   eraserCenter.x = event.x;
   eraserCenter.y = event.y;
-  clearCircle(eraserCenter, props.eraserRadius);
+  eraseCircle(eraserCenter, props.eraserRadius);
+
+  ioClient.emit("draw:erase", {
+    center: eraserCenter,
+    radius: props.eraserRadius,
+  });
 }
 
 function eraserUp(event) {
@@ -153,9 +169,14 @@ function eraserUp(event) {
 
 let canvasCtx = null;
 onMounted(() => {
-  canvasRef.value.width = drawRef.value.offsetWidth;
-  canvasRef.value.height = drawRef.value.offsetHeight;
-  canvasCtx = canvasRef.value.getContext("2d");
+  const draw = drawRef.value;
+  const canvas = canvasRef.value;
+  canvas.width = draw.offsetWidth;
+  canvas.height = draw.offsetHeight;
+  canvasCtx = canvas.getContext("2d");
+  canvasCtx.lineCap = "round";
+  canvasCtx.lineJoin = "round";
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 });
 
 function pointerDown(event) {
@@ -299,8 +320,34 @@ onBeforeUnmount(() => {
   });
 });
 
+let ioClient = null;
+onMounted(() => {
+  ioClient = io(props.serverURL, {
+    transports: ["websocket"],
+  });
+
+  ioClient.on("draw:line", (record) => {
+    drawLine(record);
+  });
+
+  ioClient.on("draw:erase", ({ center, radius }) => {
+    eraseCircle(center, radius);
+  });
+
+  ioClient.on("draw:clear", () => {
+    clearAll();
+  });
+});
+
+onBeforeUnmount(() => {
+  ioClient.disconnect();
+});
+
 defineExpose({
-  drawLine,
+  clear() {
+    clearAll();
+    ioClient.emit("draw:clear");
+  },
 });
 </script>
 
@@ -319,9 +366,10 @@ defineExpose({
 
 .draw-eraser {
   position: absolute;
-  background-color: rgba(200, 200, 200, 0.8);
+  background-color: rgba(231, 224, 224, 0.5);
   pointer-events: none;
   user-select: none;
   border-radius: 50%;
+  border: 4px solid white;
 }
 </style>
